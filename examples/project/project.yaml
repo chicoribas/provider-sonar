@@ -1,0 +1,12 @@
+apiVersion: project.sonar.crossplane.io/v1alpha1
+kind: Project
+metadata:
+  name: test-project-name
+  namespace: crossplane-system
+spec:
+  forProvider:
+    key: test_project_name
+    organization: gbsandbox
+    visibility: private
+  providerConfigRef:
+    name: sonar

@@ -2,19 +2,19 @@ apiVersion: v1
 kind: Secret
 metadata:
   namespace: crossplane-system
-  name: example-provider-secret
+  name: sonar-provider-secret
 type: Opaque
-data:
-  # credentials: BASE64ENCODED_PROVIDER_CREDS
+stringData:
+  credentials: "XXX"
 ---
 apiVersion: sonar.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:
-  name: example
+  name: sonar
 spec:
   credentials:
     source: Secret
     secretRef:
       namespace: crossplane-system
-      name: example-provider-secret
+      name: sonar-provider-secret
       key: credentials

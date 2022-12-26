@@ -27,6 +27,12 @@ make provider.addtype provider={PascalProviderName} group={group} kind={type}
 5. Run `make reviewable` to run code generation, linters, and tests.
 5. Run `make build` to build the provider.
 
+## Run locally 
+
+1. kubectl apply -f package/crds
+2. make run
+
+
 Refer to Crossplane's [CONTRIBUTING.md] file for more information on how the
 Crossplane community prefers to work. The [Provider Development][provider-dev]
 guide may also be of use.
