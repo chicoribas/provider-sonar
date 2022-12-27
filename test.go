@@ -1,27 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/crossplane/provider-sonar/internal/clients/sonar"
 )
-
-// A Response struct to map the Entire Response
-type Response struct {
-	Name    string    `json:"name"`
-	Pokemon []Pokemon `json:"pokemon_entries"`
-}
-
-// A Pokemon Struct to map every pokemon to.
-type Pokemon struct {
-	EntryNo int            `json:"entry_number"`
-	Species PokemonSpecies `json:"pokemon_species"`
-}
-
-// A struct to map our Pokemon's Species which includes it's name
-type PokemonSpecies struct {
-	Name string `json:"name"`
-}
 
 func main() {
 
@@ -40,10 +24,10 @@ func main() {
 	// 	},
 	// )))
 
-	fmt.Println((projectClient.GetByProjectKey("chicoribas", "chicoribas_scafflater")))
+	// fmt.Println((projectClient.GetByProjectKey("chicoribas", "chicoribas_scafflater")))
 
-	fmt.Println((projectClient.Create("chicoribas", "test_provider_name", "test_provider_key", "public")))
-	fmt.Println((projectClient.Delete("test_provider_key")))
-	//fmt.Println((projectClient.UpdateVisibility("test_provider_key", "private")))
+	fmt.Println((projectClient.Create(context.Background(), "chicoribas", "test_provider_name", "test_provider_key", "public")))
+	fmt.Println((projectClient.Delete(context.Background(), "test_provider_key")))
+	// fmt.Println((projectClient.UpdateVisibility("test_provider_key", "private")))
 
 }

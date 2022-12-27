@@ -1,17 +1,15 @@
 package sonar
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
-)
-
-const (
-	errOrganizationRequired = "Organization is Required"
 )
 
 var ErrProjectNotFound = errors.New("Project not found")
@@ -55,7 +53,7 @@ type SearchOptions struct {
 
 // Create new project
 // https://sonarcloud.io/web_api/api/projects/create
-func (projectClient ProjectClient) Create(organization string, name string, project string, visibility string) (Project, error) {
+func (projectClient ProjectClient) Create(ctx context.Context, organization string, name string, project string, visibility string) (Project, error) {
 
 	url := projectClient.sonarApi.GetUrl("/api/projects/create")
 	params := url.Query()
@@ -67,14 +65,22 @@ func (projectClient ProjectClient) Create(organization string, name string, proj
 	url.RawQuery = params.Encode()
 	client := &http.Client{}
 
-	req, err := projectClient.sonarApi.NewRequest("POST", url.String(), nil)
-	resp, err := client.Do(req)
-
-	if resp.StatusCode != 200 {
-		return Project{}, errors.New(fmt.Sprintf("Error calling sonar api: %s", resp.Status))
+	req, err := projectClient.sonarApi.NewRequest(ctx, "POST", url.String(), nil)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	responseData, err := ioutil.ReadAll(resp.Body)
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { err = resp.Body.Close() }()
+
+	if resp.StatusCode != 200 {
+		return Project{}, fmt.Errorf("error calling sonar api: %s", resp.Status)
+	}
+
+	responseData, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return Project{}, err
 	}
@@ -87,7 +93,7 @@ func (projectClient ProjectClient) Create(organization string, name string, proj
 
 // Delete project
 // https://sonarcloud.io/web_api/api/projects/delete
-func (projectClient ProjectClient) Delete(project string) error {
+func (projectClient ProjectClient) Delete(ctx context.Context, project string) error {
 
 	url := projectClient.sonarApi.GetUrl("/api/projects/delete")
 	params := url.Query()
@@ -95,11 +101,15 @@ func (projectClient ProjectClient) Delete(project string) error {
 	url.RawQuery = params.Encode()
 
 	client := &http.Client{}
-	req, _ := projectClient.sonarApi.NewRequest("POST", url.String(), nil)
-	resp, _ := client.Do(req)
+	req, _ := projectClient.sonarApi.NewRequest(ctx, "POST", url.String(), nil)
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { err = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return errors.New(fmt.Sprintf("Error calling sonar api: %s", resp.Status))
+		return fmt.Errorf("error calling sonar api: %s", resp.Status)
 	}
 
 	return nil
@@ -108,7 +118,7 @@ func (projectClient ProjectClient) Delete(project string) error {
 
 // Search calls the "/api/projects/search" endpoint
 // https://sonarcloud.io/web_api/api/projects/search
-func (projectClient ProjectClient) Search(organization string, options SearchOptions) (ProjectPage, error) {
+func (projectClient ProjectClient) Search(ctx context.Context, organization string, options SearchOptions) (ProjectPage, error) {
 
 	url := projectClient.sonarApi.GetUrl("/api/projects/search")
 	params := url.Query()
@@ -127,13 +137,20 @@ func (projectClient ProjectClient) Search(organization string, options SearchOpt
 	url.RawQuery = params.Encode()
 
 	client := &http.Client{}
-	req, err := projectClient.sonarApi.NewRequest("GET", url.String(), nil)
+	req, err := projectClient.sonarApi.NewRequest(ctx, "GET", url.String(), nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { err = resp.Body.Close() }()
 
 	if resp.StatusCode != 200 {
-		return ProjectPage{}, errors.New(fmt.Sprintf("Error calling sonar api: %s", resp.Status))
+		return ProjectPage{}, fmt.Errorf("error calling sonar api: %s", resp.Status)
 	}
-	responseData, err := ioutil.ReadAll(resp.Body)
+	responseData, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return ProjectPage{}, err
 	}
@@ -148,15 +165,15 @@ func (projectClient ProjectClient) Search(organization string, options SearchOpt
 }
 
 // Get a single sonar project by project key
-func (projectClient ProjectClient) GetByProjectKey(organization string, project string) (Project, error) {
+func (projectClient ProjectClient) GetByProjectKey(ctx context.Context, organization string, project string) (Project, error) {
 
-	projectPage, err := projectClient.Search(organization, SearchOptions{Projects: []string{project}})
+	projectPage, err := projectClient.Search(ctx, organization, SearchOptions{Projects: []string{project}})
 
 	if err != nil {
 		return Project{}, err
 	}
 
-	if len(projectPage.Projects) <= 0 {
+	if len(projectPage.Projects) == 0 {
 		return Project{}, ErrProjectNotFound
 	}
 
@@ -165,7 +182,7 @@ func (projectClient ProjectClient) GetByProjectKey(organization string, project 
 }
 
 // Update project visibility
-func (projectClient ProjectClient) UpdateVisibility(project string, visibility string) error {
+func (projectClient ProjectClient) UpdateVisibility(ctx context.Context, project string, visibility string) error {
 
 	url := projectClient.sonarApi.GetUrl("/api/projects/update_visibility")
 	params := url.Query()
@@ -174,11 +191,17 @@ func (projectClient ProjectClient) UpdateVisibility(project string, visibility s
 	url.RawQuery = params.Encode()
 
 	client := &http.Client{}
-	req, _ := projectClient.sonarApi.NewRequest("POST", url.String(), nil)
+	req, _ := projectClient.sonarApi.NewRequest(ctx, "POST", url.String(), nil)
 	resp, _ := client.Do(req)
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return errors.New(fmt.Sprintf("Error calling sonar api: %s", resp.Status))
+		return fmt.Errorf("error calling sonar api: %s", resp.Status)
 	}
 
 	return nil

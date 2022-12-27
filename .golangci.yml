@@ -3,6 +3,7 @@ run:
 
   skip-files:
   - "zz_generated\\..+\\.go$"
+  - "_test.go"
 
 output:
   # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
@@ -21,7 +22,7 @@ linters-settings:
     # [deprecated] comma-separated list of pairs of the form pkg:regex
     # the regex is used to ignore names within pkg. (default "fmt:.*").
     # see https://github.com/kisielk/errcheck#the-deprecated-method for details
-    ignore: fmt:.*,io/ioutil:^Read.*
+    ignore: fmt:.*,io/ioutil:^Read.*,net/http:^Close.*
 
   govet:
     # report about shadowed variables

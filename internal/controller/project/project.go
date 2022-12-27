@@ -19,6 +19,7 @@ package project
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -45,13 +46,6 @@ const (
 	errGetCreds     = "cannot get credentials"
 
 	errNewClient = "cannot create new Service"
-)
-
-// A NoOpService does nothing.
-type NoOpService struct{}
-
-var (
-	newNoOpService = func(_ []byte) (interface{}, error) { return &NoOpService{}, nil }
 )
 
 // Setup adds a controller that reconciles Project managed resources.
@@ -140,7 +134,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// These fmt statements should be removed in the real implementation.
 	fmt.Printf("Observing: %+v", cr)
 
-	project, err := c.projectClient.GetByProjectKey(cr.Spec.ForProvider.Organization, cr.Spec.ForProvider.Key)
+	project, err := c.projectClient.GetByProjectKey(ctx, cr.Spec.ForProvider.Organization, cr.Spec.ForProvider.Key)
 
 	if err != nil {
 		if errors.Is(err, sonar.ErrProjectNotFound) {
@@ -159,11 +153,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{
 			ResourceExists:   true,
 			ResourceUpToDate: false,
-			// ConnectionDetails: map[string][]byte{
-			// 	organization: []byte("chicoribas"),
-			// 	key:          []byte(cr.Spec.ForProvider.Key),
-			// 	name:         []byte(cr.Spec.ForProvider.name),
-			// },
 		}, nil
 	}
 
@@ -197,7 +186,11 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	fmt.Printf("Creating: %+v", cr)
 
-	c.projectClient.Create(cr.Spec.ForProvider.Organization, cr.GetObjectMeta().GetName(), cr.Spec.ForProvider.Key, cr.Spec.ForProvider.Visibility)
+	_, err := c.projectClient.Create(ctx, cr.Spec.ForProvider.Organization, cr.GetObjectMeta().GetName(), cr.Spec.ForProvider.Key, cr.Spec.ForProvider.Visibility)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return managed.ExternalCreation{
 		// Optionally return any details that may be required to connect to the
@@ -214,7 +207,10 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	fmt.Printf("Updating: %+v", cr)
 
-	c.projectClient.UpdateVisibility(cr.Spec.ForProvider.Key, cr.Spec.ForProvider.Visibility)
+	err := c.projectClient.UpdateVisibility(ctx, cr.Spec.ForProvider.Key, cr.Spec.ForProvider.Visibility)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return managed.ExternalUpdate{
 		// Optionally return any details that may be required to connect to the
@@ -231,7 +227,10 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 	fmt.Printf("Deleting: %+v", cr)
 
-	c.projectClient.Delete(cr.Spec.ForProvider.Key)
+	err := c.projectClient.Delete(ctx, cr.Spec.ForProvider.Key)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return nil
 }

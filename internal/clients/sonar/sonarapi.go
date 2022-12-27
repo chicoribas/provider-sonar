@@ -1,6 +1,7 @@
 package sonar
 
 import (
+	"context"
 	"io"
 	"log"
 	"net/http"
@@ -46,8 +47,8 @@ func (sonarApi SonarApi) GetUrl(uri string) *url.URL {
 	return u.JoinPath(uri)
 }
 
-func (sonarApi SonarApi) NewRequest(method string, url string, body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequest("POST", url, nil)
+func (sonarApi SonarApi) NewRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)
 	req.SetBasicAuth(sonarApi.Options.Key, "")
 
 	return req, err
